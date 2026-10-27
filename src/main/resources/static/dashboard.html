@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Dashboard - Online Banking</title>
+    <link rel="stylesheet" href="/css/styles.css">
+</head>
+<body>
+<header class="topbar">
+    <div class="brand"><span class="brand-mark" aria-hidden="true">PB</span>Online Banking</div>
+    <button type="button" class="btn-secondary" id="logoutButton">Log out</button>
+</header>
+
+<main class="container">
+    <h1 id="greeting">Welcome</h1>
+    <p class="subtitle">Here is a summary of your profile and accounts.</p>
+
+    <div id="message" class="message" role="alert" aria-live="polite" hidden></div>
+
+    <section class="panel" aria-labelledby="profileTitle">
+        <h2 id="profileTitle">Your profile</h2>
+        <dl class="details">
+            <dt>Customer ID</dt><dd id="customerId">-</dd>
+            <dt>Name</dt><dd id="name">-</dd>
+            <dt>Email</dt><dd id="email">-</dd>
+            <dt>Mobile</dt><dd id="phone">-</dd>
+        </dl>
+    </section>
+
+    <section class="panel" aria-labelledby="accountsTitle">
+        <h2 id="accountsTitle">Your accounts</h2>
+        <p class="empty" id="noAccounts" hidden>You don't have any accounts yet.</p>
+        <table id="accountsTable" hidden>
+            <thead>
+            <tr>
+                <th scope="col">Account number</th>
+                <th scope="col">Type</th>
+                <th scope="col" class="amount">Balance</th>
+            </tr>
+            </thead>
+            <tbody id="accountsBody"></tbody>
+        </table>
+    </section>
+</main>
+
+<script src="/js/api.js"></script>
+<script src="/js/dashboard.js"></script>
+</body>
+</html>
