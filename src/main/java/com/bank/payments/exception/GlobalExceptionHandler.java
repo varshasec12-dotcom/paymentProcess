@@ -22,8 +22,8 @@ public class GlobalExceptionHandler {
                 .body(new ErrorResponse(HttpStatus.NOT_FOUND.value(), ex.getMessage()));
     }
 
-    @ExceptionHandler(DuplicateContactException.class)
-    public ResponseEntity<ErrorResponse> handleDuplicateContact(DuplicateContactException ex) {
+    @ExceptionHandler({DuplicateContactException.class, DuplicateAccountException.class})
+    public ResponseEntity<ErrorResponse> handleDuplicate(RuntimeException ex) {
         return ResponseEntity.status(HttpStatus.CONFLICT)
                 .body(new ErrorResponse(HttpStatus.CONFLICT.value(), ex.getMessage()));
     }

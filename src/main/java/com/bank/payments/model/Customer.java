@@ -30,6 +30,10 @@ public class Customer {
 
     private LocalDateTime contactChangedAt;
 
+    @JsonIgnore
+    @Enumerated(EnumType.STRING)
+    private Role role;
+
     // Online-banking credentials; never sent in API responses
     @JsonIgnore
     private String passwordHash;
@@ -45,6 +49,12 @@ public class Customer {
         INACTIVE
     }
 
+    // ADMIN is bank staff; set by hand in the database (see db/customer_role_schema.sql)
+    public enum Role {
+        CUSTOMER,
+        ADMIN
+    }
+
     protected Customer() {
     }
 
@@ -54,6 +64,7 @@ public class Customer {
         setEmail(email);
         setPhoneNumber(phoneNumber);
         this.status = CustomerStatus.ACTIVE;
+        this.role = Role.CUSTOMER;
     }
 
     public Long getCustomerId() {
@@ -112,6 +123,14 @@ public class Customer {
 
     public void setContactChangedAt(LocalDateTime contactChangedAt) {
         this.contactChangedAt = contactChangedAt;
+    }
+
+    public Role getRole() {
+        return role;
+    }
+
+    public void setRole(Role role) {
+        this.role = role;
     }
 
     public String getPasswordHash() {
