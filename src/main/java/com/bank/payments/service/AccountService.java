@@ -2,6 +2,7 @@ package com.bank.payments.service;
 
 import com.bank.payments.exception.AccountNotFoundException;
 import com.bank.payments.exception.CoolingPeriodException;
+import com.bank.payments.exception.DuplicateAccountException;
 import com.bank.payments.exception.InsufficientBalanceException;
 import com.bank.payments.model.Account;
 import com.bank.payments.model.Customer;
@@ -14,6 +15,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Locale;
 
 @Service
 public class AccountService {
@@ -40,6 +42,12 @@ public class AccountService {
     @Transactional
     public Account openAccount(Long customerId, String accountType) {
         Customer customer = customerService.findCustomerById(customerId);
+        // One account of each type per customer. Two requests at the same moment can both pass this
+        // check; the unique index in db/one_account_per_type_schema.sql stops the second one.
+        if (accountRepository.existsByCustomer_CustomerIdAndAccountType(customerId, accountType)) {
+            throw new DuplicateAccountException(
+                    "You already have a " + accountType.toLowerCase(Locale.ROOT) + " account.");
+        }
         Account account = new Account(customer, generateAccountNumber(), accountType, BigDecimal.ZERO);
         return accountRepository.save(account);
     }
