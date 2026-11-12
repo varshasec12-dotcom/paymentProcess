@@ -2,6 +2,7 @@ package com.bank.payments.security;
 
 import com.bank.payments.model.Customer;
 import com.bank.payments.model.Customer.CustomerStatus;
+import com.bank.payments.model.Customer.Role;
 import org.springframework.security.core.CredentialsContainer;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
@@ -20,6 +21,7 @@ public class CustomerPrincipal implements UserDetails, CredentialsContainer {
     private String passwordHash;
     private final boolean active;
     private final LocalDateTime lockedUntil;
+    private final boolean admin;
 
     public CustomerPrincipal(Customer customer) {
         this.customerId = customer.getCustomerId();
@@ -27,10 +29,20 @@ public class CustomerPrincipal implements UserDetails, CredentialsContainer {
         this.passwordHash = customer.getPasswordHash();
         this.active = customer.getStatus() == CustomerStatus.ACTIVE;
         this.lockedUntil = customer.getLockedUntil();
+        this.admin = customer.getRole() == Role.ADMIN;
     }
 
     public Long getCustomerId() {
         return customerId;
+    }
+
+    public boolean isAdmin() {
+        return admin;
+    }
+
+    // Customers may only see their own record; bank staff may see anyone's
+    public boolean canAccessCustomer(Long otherCustomerId) {
+        return admin || customerId.equals(otherCustomerId);
     }
 
     @Override
@@ -45,7 +57,7 @@ public class CustomerPrincipal implements UserDetails, CredentialsContainer {
 
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
-        return List.of(new SimpleGrantedAuthority("ROLE_CUSTOMER"));
+        return List.of(new SimpleGrantedAuthority(admin ? "ROLE_ADMIN" : "ROLE_CUSTOMER"));
     }
 
     @Override
