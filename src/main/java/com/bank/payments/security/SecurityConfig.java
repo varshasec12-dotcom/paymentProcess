@@ -22,12 +22,6 @@ import java.util.Map;
 @Configuration
 public class SecurityConfig {
 
-    // Existing APIs, still open without login so current API testing keeps working.
-    // Lock these down (and check the customer owns the data) before going live.
-    private static final String[] OPEN_APIS = {
-            "/api/customers/**", "/api/accounts/**", "/api/transactions/**"
-    };
-
     private static final String[] PUBLIC_PAGES = {
             "/", "/index.html", "/login.html", "/register.html", "/dashboard.html",
             "/css/**", "/js/**", "/favicon.ico", "/error"
@@ -55,10 +49,12 @@ public class SecurityConfig {
                         .requestMatchers(PUBLIC_PAGES).permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/auth/csrf").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/auth/register", "/api/auth/login").permitAll()
-                        .requestMatchers(OPEN_APIS).permitAll()
+                        // Bank-staff operations. Everything else needs a login, and the controllers
+                        // check that customers only touch their own customer record and accounts.
+                        .requestMatchers(HttpMethod.GET, "/api/customers", "/api/accounts").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.POST, "/api/customers").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.DELETE, "/api/customers/*").hasRole("ADMIN")
                         .anyRequest().authenticated())
-                // Session cookies need CSRF protection; the open APIs don't use the session
-                .csrf(csrf -> csrf.ignoringRequestMatchers(OPEN_APIS))
                 .formLogin(form -> form
                         .loginPage("/login.html")
                         .loginProcessingUrl("/api/auth/login")

@@ -6,10 +6,13 @@ import com.bank.payments.dto.StartContactChangeRequest;
 import com.bank.payments.dto.VerifyOtpRequest;
 import com.bank.payments.model.Customer;
 import com.bank.payments.model.CustomerAuditLog;
+import com.bank.payments.security.CustomerPrincipal;
 import com.bank.payments.service.ContactChangeService;
 import com.bank.payments.service.CustomerService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -33,6 +36,7 @@ public class CustomerController {
         this.contactChangeService = contactChangeService;
     }
 
+    // ADMIN only (see SecurityConfig)
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public Customer addCustomer(@Valid @RequestBody CreateCustomerRequest request) {
@@ -41,38 +45,61 @@ public class CustomerController {
         return customerService.addCustomer(customer);
     }
 
+    // ADMIN only (see SecurityConfig)
     @GetMapping
     public List<Customer> getAllCustomers() {
         return customerService.getAllCustomers();
     }
 
     @GetMapping("/{customerId}")
-    public Customer getCustomer(@PathVariable Long customerId) {
+    public Customer getCustomer(@AuthenticationPrincipal CustomerPrincipal principal,
+                                @PathVariable Long customerId) {
+        requireAccess(principal, customerId);
         return customerService.findCustomerById(customerId);
     }
 
+    // ADMIN only (see SecurityConfig)
     @DeleteMapping("/{customerId}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void deleteCustomer(@PathVariable Long customerId) {
         customerService.deleteCustomer(customerId);
     }
 
-
+    // Only the customer themselves can change their email or phone, not even bank staff
     @PostMapping("/{customerId}/contact-change")
     @ResponseStatus(HttpStatus.ACCEPTED)
-    public ContactChangeResponse requestContactChange(@PathVariable Long customerId,
+    public ContactChangeResponse requestContactChange(@AuthenticationPrincipal CustomerPrincipal principal,
+                                                      @PathVariable Long customerId,
                                                       @Valid @RequestBody StartContactChangeRequest request) {
+        requireSelf(principal, customerId);
         return contactChangeService.requestChange(customerId, request.contactType(), request.newValue());
     }
 
     @PostMapping("/{customerId}/contact-change/{requestId}/verify")
-    public Customer verifyContactChange(@PathVariable Long customerId, @PathVariable Long requestId,
+    public Customer verifyContactChange(@AuthenticationPrincipal CustomerPrincipal principal,
+                                        @PathVariable Long customerId, @PathVariable Long requestId,
                                         @Valid @RequestBody VerifyOtpRequest request) {
+        requireSelf(principal, customerId);
         return contactChangeService.verifyChange(customerId, requestId, request.otp());
     }
 
     @GetMapping("/{customerId}/audit-log")
-    public List<CustomerAuditLog> getAuditLog(@PathVariable Long customerId) {
+    public List<CustomerAuditLog> getAuditLog(@AuthenticationPrincipal CustomerPrincipal principal,
+                                              @PathVariable Long customerId) {
+        requireAccess(principal, customerId);
         return customerService.getAuditLog(customerId);
+    }
+
+    // AccessDeniedException is turned into the 403 JSON response by SecurityConfig
+    private void requireAccess(CustomerPrincipal principal, Long customerId) {
+        if (!principal.canAccessCustomer(customerId)) {
+            throw new AccessDeniedException("Access denied.");
+        }
+    }
+
+    private void requireSelf(CustomerPrincipal principal, Long customerId) {
+        if (!principal.getCustomerId().equals(customerId)) {
+            throw new AccessDeniedException("Access denied.");
+        }
     }
 }

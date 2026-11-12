@@ -67,11 +67,19 @@ public class AccountService {
                 .orElseThrow(() -> new AccountNotFoundException("Account not found."));
     }
 
+    // Same as findAccountByNumber, but only finds the customer's own accounts
+    public Account findOwnedAccount(String accountNumber, Long customerId) {
+        Account account = findAccountByNumber(accountNumber);
+        requireOwner(account, customerId);
+        return account;
+    }
+
     @Transactional
-    public Account deposit(String accountNumber, BigDecimal amount) {
+    public Account deposit(String accountNumber, BigDecimal amount, Long customerId) {
         requirePositive(amount, "Deposit");
 
         Account account = lockAccount(accountNumber);
+        requireOwner(account, customerId);
         account.setBalance(account.getBalance().add(amount));
         accountRepository.save(account);
         transactionService.recordTransaction(null, account, amount, TransactionType.DEPOSIT);
@@ -79,10 +87,11 @@ public class AccountService {
     }
 
     @Transactional
-    public Account withdraw(String accountNumber, BigDecimal amount) {
+    public Account withdraw(String accountNumber, BigDecimal amount, Long customerId) {
         requirePositive(amount, "Withdrawal");
 
         Account account = lockAccount(accountNumber);
+        requireOwner(account, customerId);
         checkCoolingPeriod(account, amount);
 
         if (account.getBalance().compareTo(amount) < 0) {
@@ -96,7 +105,8 @@ public class AccountService {
     }
 
     @Transactional
-    public void transfer(String fromAccountNumber, String toAccountNumber, BigDecimal amount) {
+    // Money can only leave the customer's own account; it can go to anyone's
+    public void transfer(String fromAccountNumber, String toAccountNumber, BigDecimal amount, Long customerId) {
         requirePositive(amount, "Transfer");
 
         // Always lock the two accounts in the same (alphabetical) order. If one transfer locked A then B
@@ -106,6 +116,7 @@ public class AccountService {
         Account second = lockAccount(fromFirst ? toAccountNumber : fromAccountNumber);
         Account source = fromFirst ? first : second;
         Account destination = fromFirst ? second : first;
+        requireOwner(source, customerId);
         checkCoolingPeriod(source, amount);
 
         if (source.getBalance().compareTo(amount) < 0) {
@@ -124,6 +135,13 @@ public class AccountService {
     private Account lockAccount(String accountNumber) {
         return accountRepository.findByIdForUpdate(accountNumber)
                 .orElseThrow(() -> new AccountNotFoundException("Account not found."));
+    }
+
+    // Same message as a missing account, so nobody can probe which account numbers exist
+    private void requireOwner(Account account, Long customerId) {
+        if (!account.getCustomer().getCustomerId().equals(customerId)) {
+            throw new AccountNotFoundException("Account not found.");
+        }
     }
 
     // After an email/phone change, large outgoing payments are blocked for a while in case

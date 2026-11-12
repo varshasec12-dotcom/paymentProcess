@@ -4,9 +4,11 @@ import com.bank.payments.dto.AmountRequest;
 import com.bank.payments.dto.CreateAccountRequest;
 import com.bank.payments.dto.TransferRequest;
 import com.bank.payments.model.Account;
+import com.bank.payments.security.CustomerPrincipal;
 import com.bank.payments.service.AccountService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -17,10 +19,11 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
 
+// Customers can only use their own accounts. Bank staff (ADMIN) can view any account but,
+// like everyone else, can only move money out of their own.
 @RestController
 @RequestMapping("/api/accounts")
-public class
-AccountController {
+public class AccountController {
 
     private final AccountService accountService;
 
@@ -30,32 +33,41 @@ AccountController {
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    public Account openAccount(@Valid @RequestBody CreateAccountRequest request) {
-        return accountService.openAccount(request.customerId(), request.accountType());
+    public Account openAccount(@AuthenticationPrincipal CustomerPrincipal principal,
+                               @Valid @RequestBody CreateAccountRequest request) {
+        return accountService.openAccount(principal.getCustomerId(), request.accountType());
     }
 
+    // ADMIN only (see SecurityConfig)
     @GetMapping
     public List<Account> getAllAccounts() {
         return accountService.getAllAccounts();
     }
 
     @GetMapping("/{accountNumber}")
-    public Account getAccount(@PathVariable String accountNumber) {
-        return accountService.findAccountByNumber(accountNumber);
+    public Account getAccount(@AuthenticationPrincipal CustomerPrincipal principal,
+                              @PathVariable String accountNumber) {
+        return principal.isAdmin()
+                ? accountService.findAccountByNumber(accountNumber)
+                : accountService.findOwnedAccount(accountNumber, principal.getCustomerId());
     }
 
     @PostMapping("/{accountNumber}/deposit")
-    public Account deposit(@PathVariable String accountNumber, @Valid @RequestBody AmountRequest request) {
-        return accountService.deposit(accountNumber, request.amount());
+    public Account deposit(@AuthenticationPrincipal CustomerPrincipal principal,
+                           @PathVariable String accountNumber, @Valid @RequestBody AmountRequest request) {
+        return accountService.deposit(accountNumber, request.amount(), principal.getCustomerId());
     }
 
     @PostMapping("/{accountNumber}/withdraw")
-    public Account withdraw(@PathVariable String accountNumber, @Valid @RequestBody AmountRequest request) {
-        return accountService.withdraw(accountNumber, request.amount());
+    public Account withdraw(@AuthenticationPrincipal CustomerPrincipal principal,
+                            @PathVariable String accountNumber, @Valid @RequestBody AmountRequest request) {
+        return accountService.withdraw(accountNumber, request.amount(), principal.getCustomerId());
     }
 
     @PostMapping("/transfer")
-    public void transfer(@Valid @RequestBody TransferRequest request) {
-        accountService.transfer(request.fromAccountNumber(), request.toAccountNumber(), request.amount());
+    public void transfer(@AuthenticationPrincipal CustomerPrincipal principal,
+                         @Valid @RequestBody TransferRequest request) {
+        accountService.transfer(request.fromAccountNumber(), request.toAccountNumber(), request.amount(),
+                principal.getCustomerId());
     }
 }
