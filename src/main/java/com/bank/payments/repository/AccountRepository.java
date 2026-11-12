@@ -14,6 +14,8 @@ public interface AccountRepository extends JpaRepository<Account, String> {
 
     List<Account> findByCustomer_CustomerIdOrderByAccountNumber(Long customerId);
 
+    boolean existsByCustomer_CustomerIdAndAccountType(Long customerId, String accountType);
+
     // SELECT ... FOR UPDATE: other transactions that want to change this account wait until we
     // commit, so two payments can never both read the same old balance. Must run inside a transaction.
     @Lock(LockModeType.PESSIMISTIC_WRITE)
