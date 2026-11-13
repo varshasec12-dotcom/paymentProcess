@@ -1,5 +1,6 @@
 package com.bank.payments.controller;
 
+import com.bank.payments.dto.TransactionResponse;
 import com.bank.payments.model.Transaction;
 import com.bank.payments.security.CustomerPrincipal;
 import com.bank.payments.service.AccountService;
@@ -25,17 +26,17 @@ public class TransactionController {
     }
 
     @GetMapping("/account/{accountNumber}")
-    public List<Transaction> getTransactionsByAccount(@AuthenticationPrincipal CustomerPrincipal principal,
-                                                      @PathVariable String accountNumber) {
+    public List<TransactionResponse> getTransactionsByAccount(@AuthenticationPrincipal CustomerPrincipal principal,
+                                                              @PathVariable String accountNumber) {
         requireAccess(principal, accountNumber);
-        return transactionService.getTransactionsByAccount(accountNumber);
+        return toResponses(transactionService.getTransactionsByAccount(accountNumber), accountNumber, principal);
     }
 
     @GetMapping("/account/{accountNumber}/mini-statement")
-    public List<Transaction> getMiniStatement(@AuthenticationPrincipal CustomerPrincipal principal,
-                                              @PathVariable String accountNumber) {
+    public List<TransactionResponse> getMiniStatement(@AuthenticationPrincipal CustomerPrincipal principal,
+                                                      @PathVariable String accountNumber) {
         requireAccess(principal, accountNumber);
-        return transactionService.getMiniStatement(accountNumber);
+        return toResponses(transactionService.getMiniStatement(accountNumber), accountNumber, principal);
     }
 
     // Customers only see statements for their own accounts; bank staff see any
@@ -43,5 +44,12 @@ public class TransactionController {
         if (!principal.isAdmin()) {
             accountService.findOwnedAccount(accountNumber, principal.getCustomerId());
         }
+    }
+
+    private List<TransactionResponse> toResponses(List<Transaction> transactions, String accountNumber,
+                                                  CustomerPrincipal principal) {
+        return transactions.stream()
+                .map(transaction -> TransactionResponse.from(transaction, accountNumber, principal.isAdmin()))
+                .toList();
     }
 }

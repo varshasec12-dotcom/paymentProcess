@@ -22,4 +22,12 @@ public final class MaskingUtil {
         }
         return "******" + phoneNumber.substring(phoneNumber.length() - 4);
     }
+
+    // "123456789012" -> "********9012"
+    public static String maskAccountNumber(String accountNumber) {
+        if (accountNumber.length() <= 4) {
+            return "****";
+        }
+        return "*".repeat(accountNumber.length() - 4) + accountNumber.substring(accountNumber.length() - 4);
+    }
 }

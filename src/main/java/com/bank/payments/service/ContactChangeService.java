@@ -15,6 +15,8 @@ import com.bank.payments.repository.CustomerAuditLogRepository;
 import com.bank.payments.repository.CustomerRepository;
 import com.bank.payments.util.MaskingUtil;
 import com.bank.payments.util.ValidationUtil;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -26,6 +28,8 @@ import java.time.LocalDateTime;
 
 @Service
 public class ContactChangeService {
+
+    private static final Logger log = LoggerFactory.getLogger(ContactChangeService.class);
 
     private final ContactChangeRequestRepository requestRepository;
     private final CustomerRepository customerRepository;
@@ -78,6 +82,8 @@ public class ContactChangeService {
 
         // The OTP goes to the NEW contact, proving the customer actually owns it
         notificationService.sendOtp(contactType, normalized, otp, otpValidityMinutes);
+        log.info("Contact change requested: customerId={}, type={}, requestId={}",
+                customerId, contactType, request.getRequestId());
 
         return new ContactChangeResponse(request.getRequestId(), contactType, mask(contactType, normalized),
                 request.getExpiresAt(), "OTP sent. Verify it to complete the change.");
@@ -99,6 +105,7 @@ public class ContactChangeService {
         LocalDateTime now = LocalDateTime.now();
         if (now.isAfter(request.getExpiresAt())) {
             request.setStatus(RequestStatus.EXPIRED);
+            log.info("Contact change OTP expired: customerId={}, requestId={}", customerId, requestId);
             throw new OtpVerificationException("OTP has expired. Please start a new request.");
         }
 
@@ -107,8 +114,12 @@ public class ContactChangeService {
             int remaining = maxOtpAttempts - request.getFailedAttempts();
             if (remaining <= 0) {
                 request.setStatus(RequestStatus.FAILED);
+                log.warn("Contact change blocked after {} incorrect OTPs: customerId={}, requestId={}",
+                        request.getFailedAttempts(), customerId, requestId);
                 throw new OtpVerificationException("Too many incorrect attempts. Please start a new request.");
             }
+            log.warn("Incorrect contact change OTP: customerId={}, requestId={}, attempt={}/{}",
+                    customerId, requestId, request.getFailedAttempts(), maxOtpAttempts);
             throw new OtpVerificationException("Incorrect OTP. " + remaining + " attempt(s) left.");
         }
 
@@ -131,6 +142,7 @@ public class ContactChangeService {
 
         auditLogRepository.save(new CustomerAuditLog(customer, action,
                 request.getOldValue(), request.getNewValue(), now));
+        log.info("Contact changed: customerId={}, action={}, requestId={}", customerId, action, requestId);
 
         // Alert the OLD contact so the real owner notices an unauthorised change
         notificationService.sendContactChangedAlert(request.getContactType(),

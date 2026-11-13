@@ -1,6 +1,6 @@
 package com.bank.payments.controller;
 
-import com.bank.payments.model.Account;
+import com.bank.payments.dto.AccountResponse;
 import com.bank.payments.model.Customer;
 import com.bank.payments.security.CustomerPrincipal;
 import com.bank.payments.service.AccountService;
@@ -31,7 +31,9 @@ public class MeController {
     }
 
     @GetMapping("/accounts")
-    public List<Account> getAccounts(@AuthenticationPrincipal CustomerPrincipal principal) {
-        return accountService.getAccountsByCustomer(principal.getCustomerId());
+    public List<AccountResponse> getAccounts(@AuthenticationPrincipal CustomerPrincipal principal) {
+        return accountService.getAccountsByCustomer(principal.getCustomerId()).stream()
+                .map(AccountResponse::from)
+                .toList();
     }
 }

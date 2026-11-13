@@ -8,6 +8,8 @@ import com.bank.payments.model.CustomerAuditLog;
 import com.bank.payments.model.CustomerAuditLog.AuditAction;
 import com.bank.payments.repository.CustomerAuditLogRepository;
 import com.bank.payments.repository.CustomerRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -16,6 +18,8 @@ import java.util.List;
 
 @Service
 public class CustomerService {
+
+    private static final Logger log = LoggerFactory.getLogger(CustomerService.class);
 
     private final CustomerRepository customerRepository;
     private final CustomerAuditLogRepository auditLogRepository;
@@ -33,7 +37,9 @@ public class CustomerService {
         if (customerRepository.existsByPhoneNumber(customer.getPhoneNumber())) {
             throw new DuplicateContactException("Phone number is already registered to another customer.");
         }
-        return customerRepository.save(customer);
+        Customer saved = customerRepository.save(customer);
+        log.info("Customer created: customerId={}", saved.getCustomerId());
+        return saved;
     }
 
     public List<Customer> getAllCustomers() {
@@ -54,6 +60,7 @@ public class CustomerService {
         customerRepository.save(customer);
         auditLogRepository.save(new CustomerAuditLog(customer, AuditAction.CUSTOMER_DEACTIVATED,
                 CustomerStatus.ACTIVE.name(), CustomerStatus.INACTIVE.name(), LocalDateTime.now()));
+        log.info("Customer deactivated: customerId={}", customerId);
     }
 
     // Includes inactive customers, so a deactivation stays visible in the history

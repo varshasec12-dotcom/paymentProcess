@@ -48,8 +48,8 @@ public class GlobalExceptionHandler {
                 .body(new ErrorResponse(HttpStatus.BAD_REQUEST.value(), ex.getMessage()));
     }
 
-    @ExceptionHandler(CoolingPeriodException.class)
-    public ResponseEntity<ErrorResponse> handleCoolingPeriod(CoolingPeriodException ex) {
+    @ExceptionHandler({CoolingPeriodException.class, TransferLimitExceededException.class})
+    public ResponseEntity<ErrorResponse> handlePaymentBlocked(RuntimeException ex) {
         return ResponseEntity.status(HttpStatus.FORBIDDEN)
                 .body(new ErrorResponse(HttpStatus.FORBIDDEN.value(), ex.getMessage()));
     }

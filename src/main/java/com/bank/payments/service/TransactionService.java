@@ -8,6 +8,7 @@ import com.bank.payments.repository.TransactionRepository;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -36,6 +37,11 @@ public class TransactionService {
         return transactionRepository
                 .findByFromAccount_AccountNumberOrToAccount_AccountNumberOrderByTransactionTimeDesc(
                         accountNumber, accountNumber);
+    }
+
+    // Total sent out of the account by transfers since midnight today (server time)
+    public BigDecimal transferredToday(String accountNumber) {
+        return transactionRepository.sumTransferredSince(accountNumber, LocalDate.now().atStartOfDay());
     }
 
     public List<Transaction> getMiniStatement(String accountNumber) {

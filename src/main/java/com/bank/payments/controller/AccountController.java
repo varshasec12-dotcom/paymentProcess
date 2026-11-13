@@ -1,9 +1,9 @@
 package com.bank.payments.controller;
 
+import com.bank.payments.dto.AccountResponse;
 import com.bank.payments.dto.AmountRequest;
 import com.bank.payments.dto.CreateAccountRequest;
 import com.bank.payments.dto.TransferRequest;
-import com.bank.payments.model.Account;
 import com.bank.payments.security.CustomerPrincipal;
 import com.bank.payments.service.AccountService;
 import jakarta.validation.Valid;
@@ -33,35 +33,37 @@ public class AccountController {
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    public Account openAccount(@AuthenticationPrincipal CustomerPrincipal principal,
-                               @Valid @RequestBody CreateAccountRequest request) {
-        return accountService.openAccount(principal.getCustomerId(), request.accountType());
+    public AccountResponse openAccount(@AuthenticationPrincipal CustomerPrincipal principal,
+                                       @Valid @RequestBody CreateAccountRequest request) {
+        return AccountResponse.from(accountService.openAccount(principal.getCustomerId(), request.accountType()));
     }
 
     // ADMIN only (see SecurityConfig)
     @GetMapping
-    public List<Account> getAllAccounts() {
-        return accountService.getAllAccounts();
+    public List<AccountResponse> getAllAccounts() {
+        return accountService.getAllAccounts().stream().map(AccountResponse::from).toList();
     }
 
     @GetMapping("/{accountNumber}")
-    public Account getAccount(@AuthenticationPrincipal CustomerPrincipal principal,
-                              @PathVariable String accountNumber) {
-        return principal.isAdmin()
+    public AccountResponse getAccount(@AuthenticationPrincipal CustomerPrincipal principal,
+                                      @PathVariable String accountNumber) {
+        return AccountResponse.from(principal.isAdmin()
                 ? accountService.findAccountByNumber(accountNumber)
-                : accountService.findOwnedAccount(accountNumber, principal.getCustomerId());
+                : accountService.findOwnedAccount(accountNumber, principal.getCustomerId()));
     }
 
     @PostMapping("/{accountNumber}/deposit")
-    public Account deposit(@AuthenticationPrincipal CustomerPrincipal principal,
-                           @PathVariable String accountNumber, @Valid @RequestBody AmountRequest request) {
-        return accountService.deposit(accountNumber, request.amount(), principal.getCustomerId());
+    public AccountResponse deposit(@AuthenticationPrincipal CustomerPrincipal principal,
+                                   @PathVariable String accountNumber, @Valid @RequestBody AmountRequest request) {
+        return AccountResponse.from(
+                accountService.deposit(accountNumber, request.amount(), principal.getCustomerId()));
     }
 
     @PostMapping("/{accountNumber}/withdraw")
-    public Account withdraw(@AuthenticationPrincipal CustomerPrincipal principal,
-                            @PathVariable String accountNumber, @Valid @RequestBody AmountRequest request) {
-        return accountService.withdraw(accountNumber, request.amount(), principal.getCustomerId());
+    public AccountResponse withdraw(@AuthenticationPrincipal CustomerPrincipal principal,
+                                    @PathVariable String accountNumber, @Valid @RequestBody AmountRequest request) {
+        return AccountResponse.from(
+                accountService.withdraw(accountNumber, request.amount(), principal.getCustomerId()));
     }
 
     @PostMapping("/transfer")
