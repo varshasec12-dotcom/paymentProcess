@@ -39,6 +39,10 @@ public abstract class IntegrationTest {
     void setUpIntegrationTest() {
         // Every test starts with empty tables; CASCADE also empties accounts, transactions, etc.
         jdbcTemplate.execute("TRUNCATE customers RESTART IDENTITY CASCADE");
+        // ddl-auto builds tables from the entities but not this sequence (see db/account_number_schema.sql),
+        // which AccountService.openAccount needs
+        jdbcTemplate.execute("CREATE SEQUENCE IF NOT EXISTS account_number_seq START WITH 100000000000 "
+                + "MINVALUE 100000000000 MAXVALUE 999999999999");
 
         // Send every request as HTTPS, otherwise SecurityConfig redirects it
         mockMvc = MockMvcBuilders.webAppContextSetup(context)

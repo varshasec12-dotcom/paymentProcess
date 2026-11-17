@@ -153,10 +153,8 @@ public class ContactChangeService {
 
     private String normalize(ContactType contactType, String value) {
         if (contactType == ContactType.EMAIL) {
-            if (!ValidationUtil.isValidEmail(value)) {
-                throw new IllegalArgumentException("Invalid email address: " + value);
-            }
-            return value.trim();
+            // Same format and allowed-domain rules as registration
+            return customerService.validateEmail(value);
         }
         if (!ValidationUtil.isValidPhoneNumber(value)) {
             throw new IllegalArgumentException("Invalid phone number: " + value);

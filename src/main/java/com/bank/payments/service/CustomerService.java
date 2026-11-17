@@ -8,13 +8,17 @@ import com.bank.payments.model.CustomerAuditLog;
 import com.bank.payments.model.CustomerAuditLog.AuditAction;
 import com.bank.payments.repository.CustomerAuditLogRepository;
 import com.bank.payments.repository.CustomerRepository;
+import com.bank.payments.util.ValidationUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Locale;
+import java.util.stream.Collectors;
 
 @Service
 public class CustomerService {
@@ -23,14 +27,41 @@ public class CustomerService {
 
     private final CustomerRepository customerRepository;
     private final CustomerAuditLogRepository auditLogRepository;
+    private final List<String> allowedEmailDomains;
 
     public CustomerService(CustomerRepository customerRepository,
-                           CustomerAuditLogRepository auditLogRepository) {
+                           CustomerAuditLogRepository auditLogRepository,
+                           @Value("${payments.customer.allowed-email-domains}") List<String> allowedEmailDomains) {
         this.customerRepository = customerRepository;
         this.auditLogRepository = auditLogRepository;
+        this.allowedEmailDomains = allowedEmailDomains.stream()
+                .map(domain -> domain.trim().toLowerCase(Locale.ROOT))
+                .filter(domain -> !domain.isEmpty())
+                .toList();
     }
 
+    // Checks a new email address and returns it in its stored form. Used for registration, bank staff
+    // creating a customer and a customer changing their email, so all three follow the same rules.
+    public String validateEmail(String email) {
+        if (!ValidationUtil.isValidEmail(email)) {
+            throw new IllegalArgumentException("Invalid email address: " + email);
+        }
+        String trimmed = email.trim();
+        String domain = trimmed.substring(trimmed.lastIndexOf('@') + 1).toLowerCase(Locale.ROOT);
+        if (!allowedEmailDomains.contains(domain)) {
+            throw new IllegalArgumentException("Email domain not accepted. Please use an address ending in "
+                    + allowedEmailDomainsText() + ".");
+        }
+        return trimmed;
+    }
+
+    private String allowedEmailDomainsText() {
+        return allowedEmailDomains.stream().map(domain -> "@" + domain).collect(Collectors.joining(", "));
+    }
+
+    // Used by self-registration and by bank staff creating a customer
     public Customer addCustomer(Customer customer) {
+        customer.setEmail(validateEmail(customer.getEmail()));
         if (customerRepository.existsByEmailIgnoreCase(customer.getEmail())) {
             throw new DuplicateContactException("Email address is already registered to another customer.");
         }
