@@ -6,43 +6,142 @@
     <title>Dashboard - Online Banking</title>
     <link rel="stylesheet" href="/css/styles.css">
 </head>
-<body>
-<header class="topbar">
-    <div class="brand"><span class="brand-mark" aria-hidden="true">PB</span>Online Banking</div>
-    <button type="button" class="btn-secondary" id="logoutButton">Log out</button>
-</header>
+<body class="bank-app">
 
-<main class="container">
-    <h1 id="greeting">Welcome</h1>
-    <p class="subtitle">Here is a summary of your profile and accounts.</p>
+<aside class="sidebar" aria-label="Main navigation">
+    <div class="brand"><span class="brand-mark" aria-hidden="true">PB</span>Online Banking</div>
+    <nav>
+        <a href="#overview" class="nav-link active" data-view="overview">Overview</a>
+        <a href="#accounts" class="nav-link" data-view="accounts">Accounts</a>
+        <a href="#transactions" class="nav-link" data-view="transactions">Transactions</a>
+        <a href="#profile" class="nav-link" data-view="profile">Profile</a>
+    </nav>
+    <button type="button" class="btn-logout" id="logoutButton">Log out</button>
+</aside>
+
+<div class="main">
+    <header class="app-header">
+        <div>
+            <h1 id="greeting">Welcome</h1>
+            <p class="subtitle" id="today"></p>
+        </div>
+        <div class="user-chip" aria-hidden="true"><span class="avatar" id="avatar">?</span></div>
+    </header>
 
     <div id="message" class="message" role="alert" aria-live="polite" hidden></div>
 
-    <section class="panel" aria-labelledby="profileTitle">
-        <h2 id="profileTitle">Your profile</h2>
-        <dl class="details">
-            <dt>Customer ID</dt><dd id="customerId">-</dd>
-            <dt>Name</dt><dd id="name">-</dd>
-            <dt>Email</dt><dd id="email">-</dd>
-            <dt>Mobile</dt><dd id="phone">-</dd>
-        </dl>
+    <!-- Overview -->
+    <section class="view" id="view-overview">
+        <div class="hero">
+            <div>
+                <p class="hero-label">Total balance</p>
+                <p class="hero-amount" id="totalBalance">-</p>
+                <p class="hero-sub" id="accountCount"></p>
+            </div>
+            <div class="quick-actions">
+                <button type="button" class="action" data-action="deposit"><span aria-hidden="true">+</span>Deposit</button>
+                <button type="button" class="action" data-action="withdraw"><span aria-hidden="true">&minus;</span>Withdraw</button>
+                <button type="button" class="action" data-action="transfer"><span aria-hidden="true">&rarr;</span>Transfer</button>
+                <button type="button" class="action" data-action="open"><span aria-hidden="true">&#9733;</span>New account</button>
+            </div>
+        </div>
+
+        <h2 class="section-title">Your accounts</h2>
+        <div class="account-grid" id="overviewAccounts"></div>
+
+        <div class="statement-link-row">
+            <a href="#transactions" class="statement-link" data-action="history">View account statement &rarr;</a>
+        </div>
+
+        <div class="panel">
+            <div class="panel-head">
+                <h2>Recent activity</h2>
+                <select id="overviewAccountSelect" aria-label="Account"></select>
+            </div>
+            <ul class="tx-list" id="overviewTx"></ul>
+        </div>
     </section>
 
-    <section class="panel" aria-labelledby="accountsTitle">
-        <h2 id="accountsTitle">Your accounts</h2>
-        <p class="empty" id="noAccounts" hidden>You don't have any accounts yet.</p>
-        <table id="accountsTable" hidden>
-            <thead>
-            <tr>
-                <th scope="col">Account number</th>
-                <th scope="col">Type</th>
-                <th scope="col" class="amount">Balance</th>
-            </tr>
-            </thead>
-            <tbody id="accountsBody"></tbody>
-        </table>
+    <!-- Accounts -->
+    <section class="view" id="view-accounts" hidden>
+        <div class="panel-head">
+            <h2 class="section-title">Accounts</h2>
+            <button type="button" class="btn-small" data-action="open">Open new account</button>
+        </div>
+        <div class="account-grid" id="accountsList"></div>
     </section>
-</main>
+
+    <!-- Transactions -->
+    <section class="view" id="view-transactions" hidden>
+        <div class="panel">
+            <div class="panel-head">
+                <h2>Transaction history</h2>
+                <select id="historyAccountSelect" aria-label="Account"></select>
+            </div>
+            <table class="tx-table">
+                <thead>
+                <tr>
+                    <th scope="col">Date</th>
+                    <th scope="col">Type</th>
+                    <th scope="col">Account</th>
+                    <th scope="col">Status</th>
+                    <th scope="col" class="amount">Amount</th>
+                </tr>
+                </thead>
+                <tbody id="historyBody"></tbody>
+            </table>
+            <p class="empty" id="historyEmpty" hidden>No transactions yet.</p>
+        </div>
+    </section>
+
+    <!-- Profile -->
+    <section class="view" id="view-profile" hidden>
+        <div class="panel">
+            <h2>Your profile</h2>
+            <dl class="details">
+                <dt>Customer ID</dt><dd id="customerId">-</dd>
+                <dt>Name</dt><dd id="name">-</dd>
+                <dt>Email</dt><dd id="email">-</dd>
+                <dt>Mobile</dt><dd id="phone">-</dd>
+            </dl>
+        </div>
+    </section>
+</div>
+
+<!-- Shared dialog for deposit / withdraw / transfer / open account -->
+<dialog id="actionDialog" aria-labelledby="dialogTitle">
+    <form id="actionForm" method="dialog" novalidate>
+        <h2 id="dialogTitle">Deposit</h2>
+        <div id="dialogMessage" class="message" role="alert" aria-live="polite" hidden></div>
+
+        <div class="field" data-for="account">
+            <label for="dlgAccount" id="dlgAccountLabel">Account</label>
+            <select id="dlgAccount"></select>
+        </div>
+        <div class="field" data-for="to">
+            <label for="dlgTo">To account number</label>
+            <input type="text" id="dlgTo" autocomplete="off" list="ownAccounts">
+            <datalist id="ownAccounts"></datalist>
+        </div>
+        <div class="field" data-for="amount">
+            <label for="dlgAmount">Amount</label>
+            <input type="number" id="dlgAmount" min="0.01" step="0.01" inputmode="decimal">
+        </div>
+        <div class="field" data-for="type">
+            <label for="dlgType">Account type</label>
+            <select id="dlgType">
+                <option value="SAVINGS">Savings</option>
+                <option value="CURRENT">Current</option>
+                <option value="SALARY">Salary</option>
+            </select>
+        </div>
+
+        <div class="dialog-buttons">
+            <button type="button" class="btn-secondary" id="dialogCancel">Cancel</button>
+            <button type="submit" class="btn-primary" id="dialogSubmit">Confirm</button>
+        </div>
+    </form>
+</dialog>
 
 <script src="/js/api.js"></script>
 <script src="/js/dashboard.js"></script>
