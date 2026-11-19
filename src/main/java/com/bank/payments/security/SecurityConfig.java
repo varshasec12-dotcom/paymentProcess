@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.http.HttpServletResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
@@ -44,10 +45,14 @@ public class SecurityConfig {
     }
 
     @Bean
-    public SecurityFilterChain securityFilterChain(HttpSecurity http, LoginAttemptService loginAttempts)
+    public SecurityFilterChain securityFilterChain(HttpSecurity http, LoginAttemptService loginAttempts,
+                                                   @Value("${payments.http-redirect-port}") int httpPort,
+                                                   @Value("${server.port}") int httpsPort)
             throws Exception {
         http
-                // Send anything arriving over plain HTTP to HTTPS (8080 -> 8443)
+                // Send anything arriving over plain HTTP to HTTPS. The default port mapping only
+                // knows 80 -> 443 and 8080 -> 8443, so map our own HTTP port explicitly.
+                .portMapper(ports -> ports.http(httpPort).mapsTo(httpsPort))
                 .requiresChannel(channel -> channel.anyRequest().requiresSecure())
                 .authorizeHttpRequests(auth -> auth
                         // dashboard.html itself is public; the data it loads from /api/me requires login

@@ -301,6 +301,7 @@ a {
     place-items: center;
     font-weight: 700;
     text-transform: uppercase;
+    cursor: default;
 }
 
 .hero {

@@ -83,8 +83,10 @@
 
     function showProfile(customer) {
         document.getElementById('greeting').textContent = 'Welcome, ' + customer.firstName;
-        document.getElementById('avatar').textContent =
-            (customer.firstName[0] || '') + (customer.lastName ? customer.lastName[0] : '');
+        const avatar = document.getElementById('avatar');
+        avatar.textContent = (customer.firstName[0] || '') + (customer.lastName ? customer.lastName[0] : '');
+        // Full name as a tooltip when hovering over the initials
+        avatar.title = [customer.firstName, customer.lastName].filter(Boolean).join(' ');
         document.getElementById('customerId').textContent = customer.customerId;
         document.getElementById('name').textContent = customer.firstName + ' ' + customer.lastName;
         document.getElementById('email').textContent = customer.email;
@@ -358,12 +360,38 @@
         return { url: '/api/accounts/' + encodeURIComponent(from) + '/' + action, body: { amount } };
     }
 
-    const SUCCESS = {
-        deposit: 'Deposit successful.',
-        withdraw: 'Withdrawal successful.',
-        transfer: 'Transfer successful.',
-        open: 'Your new account is ready.'
-    };
+    // Confirmation that repeats what the customer entered, e.g.
+    // "Deposit successful: 250.00 credited to account XXXXXXXX0008."
+    function successMessage(action, body) {
+        if (action === 'open') {
+            return 'Your new account is ready.';
+        }
+        const amount = money.format(Number(body.amount));
+        const account = maskAccountNumber(fields.account.value);
+        if (action === 'deposit') {
+            return 'Deposit successful: ' + amount + ' credited to account ' + account + '.';
+        }
+        if (action === 'withdraw') {
+            return 'Withdrawal successful: ' + amount + ' debited from account ' + account + '.';
+        }
+        return 'Transfer successful: ' + amount + ' debited from account ' + maskAccountNumber(body.fromAccountNumber)
+            + ' and credited to account ' + maskAccountNumber(body.toAccountNumber) + '.';
+    }
+
+    const SUCCESS_DISPLAY_MS = 3000;
+    let successTimer = null;
+
+    // Show a success message briefly, then hide it. If another message has replaced it
+    // in the meantime (e.g. an error), leave that one alone.
+    function flashSuccess(text) {
+        clearTimeout(successTimer);
+        Api.showMessage(message, text, 'success');
+        successTimer = setTimeout(() => {
+            if (message.textContent === text) {
+                Api.showMessage(message, '', 'success');
+            }
+        }, SUCCESS_DISPLAY_MS);
+    }
 
     dialogForm.addEventListener('submit', async event => {
         event.preventDefault();
@@ -387,8 +415,9 @@
                 Api.showMessage(dialogMessage, await Api.errorMessage(response), 'error');
                 return;
             }
+            const confirmation = successMessage(action, call.body);
             closeDialog();
-            Api.showMessage(message, SUCCESS[action], 'success');
+            flashSuccess(confirmation);
             await refreshAccounts();
         } catch (error) {
             Api.showMessage(dialogMessage, error.message, 'error');
